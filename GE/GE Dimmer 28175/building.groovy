@@ -28,26 +28,50 @@ metadata {
         capability "Sensor"
         capability "Health Check"
 
-        fingerprint mfr: "0063", prod: "4457", deviceJoinName: "Z-Wave Wall Dimmer"
-        fingerprint mfr: "0063", prod: "4944", deviceJoinName: "GE Z-Wave Wall Dimmer"
-        fingerprint mfr: "0063", prod: "5044", deviceJoinName: "Z-Wave Plug-In Dimmer"
         fingerprint mfr: "0063", prod: "5044", model: "3132", deviceJoinName: "GE Plug-In Dual Dimmer"
     }
 
     tiles(scale: 2) {
-        standardTile("switch", "device.switch", width: 6, height: 4, canChangeIcon: true) {
-            state "off", label:'${currentValue}', action:"switch.on",
-                    icon:"st.switches.switch.off", backgroundColor: "#ffffff"
-            state "on", label:'${currentValue}', action:"switch.on",
-                    icon:"st.switches.switch.off", backgroundColor: "#00a0dc"
+        multiAttributeTile(name:"switch", type: "lighting", width: 6, height: 4, canChangeIcon: true){
+            tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
+                attributeState "on", label:'${name}', action:"switch.off",
+                        icon:"st.switches.switch.on", backgroundColor:"#00a0dc", nextState:"turningOff"
+                attributeState "off", label:'${name}', action:"switch.on",
+                        icon:"st.switches.switch.off", backgroundColor:"#ffffff", nextState:"turningOn"
+                attributeState "turningOn", label:'${name}', action:"switch.off",
+                        icon:"st.switches.switch.on", backgroundColor:"#00a0dc", nextState:"turningOff"
+                attributeState "turningOff", label:'${name}', action:"switch.on",
+                        icon:"st.switches.switch.off", backgroundColor:"#ffffff", nextState:"turningOn"
+            }
+            tileAttribute ("device.level", key: "SLIDER_CONTROL") {
+                attributeState "level", action:"switch level.setLevel"
+            }
         }
 
-        valueTile("level", "device.level", decoration: "flat", width: 2, height: 2){
-            state "level", label:'${currentValue} Level'
+        standardTile("refresh", "device.switch", width: 2, height: 2, inactiveLabel: false, decoration: "flat") {
+            state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
         }
 
         main("switch")
 
-        details(["switch", "level"])
+        details(["switch", "refresh"])
     }
+}
+
+def parse(String description){
+    def result = null
+    def cmd = zwave.parse(description)
+    if (cmd) {
+        result = zwaveEvent(cmd)
+        log.debug "Parsed ${cmd} to ${result.inspect()}"
+    }
+    else{
+        log.debug "Non-parsed event: ${description}"
+    }
+}
+
+def zwaveEvent(physicalgraph.zwave.Command cmd) {
+    // This will capture any commands not handled by other instances of zwaveEvent
+    // and is recommended for development so you can see every command the device sends
+    log.debug "Unhandled Event: ${cmd}"
 }
