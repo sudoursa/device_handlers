@@ -20,6 +20,7 @@
 metadata {
     definition(name: "GE 28175 (ZW3106) Plug-In Dual Smart Dimmer", namespace: "sudoursa", author: "Thomas Slaymaker") {
         capability "Actuator"
+        capability "Indicator"
         capability "Switch Level"
         capability "Switch"
         capability "Polling"
@@ -28,14 +29,9 @@ metadata {
         //capability "Health Check"
         capability "Button"
 
-        attribute "lastActivity", "String"
-        attribute "lastEvent", "String"
-        attribute "firmware", "String"
 
-        command "pressUpX2"
-
-        fingerprint manufacturer: "0063", prod: "28175", model: "28175", deviceJoinName: "GE Plug-In Dual Smart Dimmer"
-
+        fingerprint zw: "L", type: "1101", mfr: "0063", prod: "5044", model: "3132", cc: "5E,56,86,72,5A,85,59,73,60,8E,26,27,70,2C,2B,7A", role: "05", ff: "8600", ui: "8600", deviceJoinName: "GE Plug-In Dual Smart Dimmer"
+    }
     simulator {}
 
     preferences {
@@ -57,29 +53,29 @@ metadata {
 
         childDeviceTiles("all")
 
-        valueTile("lastActivity", "device.lastActivity", inactiveLabel: false, decoration: "flat", width: 4, height: 1) {
-            state "default", label: 'Last Activity: ${currentValue}', icon: "st.Health & Wellness.health9"
-        }
-
-        valueTile("firmware", "device.firmware", inactiveLabel: false, decoration: "flat", width: 2, height: 1) {
-            state "default", label: 'fw: ${currentValue}', icon: ""
-        }
-
-        valueTile("info", "device.info", inactiveLabel: false, decoration: "flat", width: 3, height: 1) {
-            state "default", label: 'Tap on the ▲▲ button below to test your scene'
-        }
-
-        valueTile("icon", "device.icon", inactiveLabel: false, decoration: "flat", width: 2, height: 1) {
-            state "default", label: '', icon: "https://inovelli.com/wp-content/uploads/Device-Handler/Inovelli-Device-Handler-Logo.png"
-        }
-
-        standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat", width: 1, height: 1) {
+//        valueTile("lastActivity", "device.lastActivity", inactiveLabel: false, decoration: "flat", width: 4, height: 1) {
+//            state "default", label: 'Last Activity: ${currentValue}', icon: "st.Health & Wellness.health9"
+//        }
+//
+//        valueTile("firmware", "device.firmware", inactiveLabel: false, decoration: "flat", width: 2, height: 1) {
+//            state "default", label: 'fw: ${currentValue}', icon: ""
+//        }
+//
+//        valueTile("info", "device.info", inactiveLabel: false, decoration: "flat", width: 3, height: 1) {
+//            state "default", label: 'Tap on the ▲▲ button below to test your scene'
+//        }
+//
+//        valueTile("icon", "device.icon", inactiveLabel: false, decoration: "flat", width: 2, height: 1) {
+//            state "default", label: '', icon: "https://inovelli.com/wp-content/uploads/Device-Handler/Inovelli-Device-Handler-Logo.png"
+//        }
+//
+        standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
             state "default", label: "", action: "refresh.refresh", icon: "st.secondary.refresh"
         }
-
-        standardTile("pressUpX2", "device.button", width: 6, height: 1, decoration: "flat") {
-            state "default", label: "Tap ▲▲", backgroundColor: "#ffffff", action: "pressUpX2"
-        }
+//
+//        standardTile("pressUpX2", "device.button", width: 6, height: 1, decoration: "flat") {
+//            state "default", label: "Tap ▲▲", backgroundColor: "#ffffff", action: "pressUpX2"
+//        }
     }
 }
 
@@ -344,6 +340,6 @@ private void createChildDevices() {
     }
 }
 
-def pressUpX2() {
-    sendEvent(buttonEvent(1, "pushed"))
-}
+//def pressUpX2() {
+//    sendEvent(buttonEvent(1, "pushed"))
+//}
