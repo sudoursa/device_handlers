@@ -48,13 +48,15 @@ metadata {
             }
         }
 
+        childDeviceTiles("all")
+
         standardTile("refresh", "device.switch", width: 2, height: 2, inactiveLabel: false, decoration: "flat") {
             state "default", label: '', action: "refresh.refresh", icon: "st.secondary.refresh"
         }
 
         main("switch")
 
-        details(["switch", "refresh"])
+        details(["switch", "all", "refresh"])
     }
 }
 
@@ -71,24 +73,6 @@ def updated() {
         }
         state.oldLabel = device.label
     }
-    def commands = []
-    commands << new physicalgraph.device.HubAction(zwave.configurationV1.configurationSet(configurationValue: [ledIndicator == "on" ? 1 : ledIndicator == "never" ? 2 : 0], parameterNumber: 3, size: 1).format())
-    commands << new physicalgraph.device.HubAction(zwave.configurationV1.configurationSet(configurationValue: [invertSwitch == true ? 1 : 0], parameterNumber: 4, size: 1).format())
-    commands << new physicalgraph.device.HubAction(zwave.configurationV1.configurationSet(configurationValue: [zwaveSteps], parameterNumber: 7, size: 1).format())
-    commands << new physicalgraph.device.HubAction(zwave.configurationV1.configurationSet(configurationValue: [zwaveDelay], parameterNumber: 8, size: 1).format())
-    commands << new physicalgraph.device.HubAction(zwave.configurationV1.configurationSet(configurationValue: [manualSteps], parameterNumber: 9, size: 1).format())
-    commands << new physicalgraph.device.HubAction(zwave.configurationV1.configurationSet(configurationValue: [manualDelay], parameterNumber: 10, size: 1).format())
-    commands << new physicalgraph.device.HubAction(zwave.configurationV1.configurationSet(configurationValue: [allonSteps], parameterNumber: 11, size: 1).format())
-    commands << new physicalgraph.device.HubAction(zwave.configurationV1.configurationSet(configurationValue: [allonDelay], parameterNumber: 12, size: 1).format())
-    commands << new physicalgraph.device.HubAction(zwave.configurationV1.configurationGet(parameterNumber: 3).format())
-    commands << new physicalgraph.device.HubAction(zwave.configurationV1.configurationGet(parameterNumber: 4).format())
-    commands << new physicalgraph.device.HubAction(zwave.configurationV1.configurationGet(parameterNumber: 7).format())
-    commands << new physicalgraph.device.HubAction(zwave.configurationV1.configurationGet(parameterNumber: 8).format())
-    commands << new physicalgraph.device.HubAction(zwave.configurationV1.configurationGet(parameterNumber: 9).format())
-    commands << new physicalgraph.device.HubAction(zwave.configurationV1.configurationGet(parameterNumber: 10).format())
-    commands << new physicalgraph.device.HubAction(zwave.configurationV1.configurationGet(parameterNumber: 11).format())
-    commands << new physicalgraph.device.HubAction(zwave.configurationV1.configurationGet(parameterNumber: 12).format())
-    sendHubCommand(commands, 1500)
 }
 
 def parse(String description) {
@@ -118,7 +102,6 @@ def zwaveEvent(physicalgraph.zwave.commands.switchmultilevelv3.SwitchMultilevelR
         }
         if (cmd.value) {
             event = [createEvent([name: "switch", value: "on"])]
-            log.info "Command Value is ${cmd.value}"
         } else {
             def allOff = true
             childDevices.each {
@@ -138,7 +121,7 @@ def zwaveEvent(physicalgraph.zwave.commands.switchmultilevelv3.SwitchMultilevelR
         def cmds = []
         cmds << encap(zwave.switchBinaryV1.switchBinaryGet(), 1)
         cmds << encap(zwave.switchBinaryV1.switchBinaryGet(), 2)
-        return [result, response(commands(cmds))] // returns the result of reponse()
+        return [result, response(commands(cmds))] // returns the result of response()
     }
 }
 
@@ -160,6 +143,30 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
     // This will capture any commands not handled by other instances of zwaveEvent
     // and is recommended for development so you can see every command the device sends
     log.error "Unhandled Event from catchall: ${cmd}"
+}
+
+void childOn(String dni) {
+    log.debug "childOn($dni)"
+    def cmds = []
+    cmds << new physicalgraph.device.HubAction(command(encap(zwave.basicV1.basicSet(value: 0xFF), channelNumber(dni))))
+    cmds << new physicalgraph.device.HubAction(command(encap(zwave.switchBinaryV1.switchBinaryGet(), channelNumber(dni))))
+    sendHubCommand(cmds, 1000)
+}
+
+void childOff(String dni) {
+    log.debug "childOff($dni)"
+    def cmds = []
+    cmds << new physicalgraph.device.HubAction(command(encap(zwave.basicV1.basicSet(value: 0x00), channelNumber(dni))))
+    cmds << new physicalgraph.device.HubAction(command(encap(zwave.switchBinaryV1.switchBinaryGet(), channelNumber(dni))))
+    sendHubCommand(cmds, 1000)
+
+}
+
+void childRefresh(String dni) {
+    log.debug "childRefresh($dni)"
+    def cmds = []
+    cmds << new physicalgraph.device.HubAction(command(encap(zwave.switchBinaryV1.switchBinaryGet(), channelNumber(dni))))
+    sendHubCommand(cmds, 1000)
 }
 
 private channelNumber(String dni) {
