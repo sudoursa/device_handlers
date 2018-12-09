@@ -108,6 +108,7 @@ def zwaveEvent(physicalgraph.zwave.commands.switchmultilevelv3.SwitchMultilevelR
         }
         if (cmd.value) {
             event = [createEvent([name: "switch", value: "on"])]
+            log.trace "cmd.value is ${cmd.value}"
         } else {
             def allOff = true
             childDevices.each {
@@ -188,7 +189,7 @@ def off() {
             zwave.switchAllV1.switchAllOff(),
             encap(zwave.switchMultilevelV2.switchMultilevelGet(), 1),
             encap(zwave.switchMultilevelV2.switchMultilevelGet(), 2)
-    ])
+    ], 3000)
 }
 
 def poll() {
@@ -266,7 +267,7 @@ private void createChildDevices() {
     state.oldLabel = device.label
     for (i in 1..2) {
         addChildDevice("Child Channel", "${device.deviceNetworkId}-ep${i}", null, [completedSetup: true, label: "${device.displayName} (CH${i})",
-                                                                                         isComponent   : false, componentName: "ep$i", componentLabel: "Channel $i"
+                                                                                         isComponent   : true, componentName: "ep$i", componentLabel: "Channel $i"
         ])
     }
 }
