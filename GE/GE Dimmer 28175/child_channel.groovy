@@ -16,6 +16,7 @@
 metadata {
     definition (name: "Child Channel", namespace: "sudoursa", author: "Thomas Slaymaker") {
         capability "Switch"
+        capability "Switch Level"
         capability "Actuator"
         capability "Sensor"
         capability "Refresh"

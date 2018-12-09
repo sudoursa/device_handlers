@@ -87,6 +87,15 @@ def parse(String description) {
     return result
 }
 
+def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd, value=null) {
+    log.debug "BasicSet ${cmd} with a child of ${value}"
+    def result = createEvent(name: "switch", value: cmd.value ? "on" : "off", type: "digital")
+    def cmds = []
+    cmds << encap(zwave.switchBinaryV1.switchBinaryGet(), 1)
+    cmds << encap(zwave.switchBinaryV1.switchBinaryGet(), 2)
+    log.trace "displaying commands for basicset ${cmds}"
+    return [result, response(commands(cmds))] // returns the result of response()
+}
 
 def zwaveEvent(physicalgraph.zwave.commands.switchmultilevelv3.SwitchMultilevelReport cmd, ep = null) {
     log.debug "SwitchMultilevelReport ${cmd} - ep ${ep}"
@@ -136,7 +145,31 @@ def zwaveEvent(physicalgraph.zwave.commands.multichannelv3.MultiChannelCmdEncap 
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
-    // this is to catch basic reports, not sure what to do with it yet... seems to be the dimmer level from the last endpoint that was changed
+    log.debug "BasicReport ${cmd} - ep ${ep}"
+    if (ep) {
+        def event
+        childDevices.each {
+            childDevice ->
+                if (childDevice.deviceNetworkId == "$device.deviceNetworkId-ep$ep") {
+                    childDevice.sendEvent(name: "switch", value: cmd.value ? "on" : "off")
+                }
+        }
+        if (cmd.value) {
+            event = [createEvent([name: "switch", value: "on"])]
+        } else {
+            def allOff = true
+            childDevices.each {
+                n ->
+                    if (n.deviceNetworkId != "$device.deviceNetworkId-ep$ep" && n.currentState("switch").value != "off") allOff = false
+            }
+            if (allOff) {
+                event = [createEvent([name: "switch", value: "off"])]
+            } else {
+                event = [createEvent([name: "switch", value: "on"])]
+            }
+        }
+        return event
+    }
 }
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
@@ -167,6 +200,22 @@ void childRefresh(String dni) {
     def cmds = []
     cmds << new physicalgraph.device.HubAction(command(encap(zwave.switchBinaryV1.switchBinaryGet(), channelNumber(dni))))
     sendHubCommand(cmds, 1000)
+}
+
+private encap(cmd, endpoint) {
+    if (endpoint) {
+        zwave.multiChannelV3.multiChannelCmdEncap(destinationEndPoint: endpoint).encapsulate(cmd)
+    } else {
+        cmd
+    }
+}
+
+private command(physicalgraph.zwave.Command cmd) {
+    if (state.sec) {
+        zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
+    } else {
+        cmd.format()
+    }
 }
 
 private channelNumber(String dni) {
