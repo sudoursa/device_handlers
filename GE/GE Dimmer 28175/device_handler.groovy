@@ -228,6 +228,7 @@ void childOff(String dni) {
     cmds << new physicalgraph.device.HubAction(command(encap(zwave.basicV1.basicSet(value: 0x00), channelNumber(dni))))
     cmds << new physicalgraph.device.HubAction(command(encap(zwave.switchBinaryV1.switchBinaryGet(), channelNumber(dni))))
     sendHubCommand(cmds, 1000)
+    
 }
 
 void childRefresh(String dni) {

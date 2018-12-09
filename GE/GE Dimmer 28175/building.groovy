@@ -58,20 +58,74 @@ metadata {
     }
 }
 
-def parse(String description){
-    def result = null
+
+def parse(String description) {
+    def result = []
     def cmd = zwave.parse(description)
     if (cmd) {
-        result = zwaveEvent(cmd)
+        result += zwaveEvent(cmd)
         log.debug "Parsed ${cmd} to ${result.inspect()}"
-    }
-    else{
+    } else {
         log.debug "Non-parsed event: ${description}"
     }
+    return result
 }
+
+
+def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd) {
+    log.debug "BasicSet ${cmd}"
+    def result = createEvent(name: "switch", value: cmd.value ? "on" : "off", type: "digital")
+    def cmds = []
+    cmds << encap(zwave.switchBinaryV1.switchBinaryGet(), 1)
+    cmds << encap(zwave.switchBinaryV1.switchBinaryGet(), 2)
+    return [result, response(commands(cmds))] // returns the result of reponse()
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd, ep = null) {
+    log.debug "SwitchMultilevelReport ${cmd} - ep ${ep}"
+    if (ep) {
+        def event
+        def childDevice = childDevices.find {
+            it.deviceNetworkId == "$device.deviceNetworkId-ep$ep"
+        }
+        if (childDevice) childDevice.sendEvent(name: "switch", value: cmd.value ? "on" : "off")
+        if (cmd.value) {
+            event = [createEvent([name: "switch", value: "on"])]
+        } else {
+            def allOff = true
+            childDevices.each {
+                n ->
+                    if (n.currentState("switch").value != "off") allOff = false
+            }
+            if (allOff) {
+                event = [createEvent([name: "switch", value: "off"])]
+            } else {
+                event = [createEvent([name: "switch", value: "on"])]
+            }
+        }
+        return event
+    } else {
+        def result = createEvent(name: "switch", value: cmd.value ? "on" : "off", type: "digital")
+        def cmds = []
+        cmds << encap(zwave.switchBinaryV1.switchBinaryGet(), 1)
+        cmds << encap(zwave.switchBinaryV1.switchBinaryGet(), 2)
+        return [result, response(commands(cmds))] // returns the result of reponse()
+    }
+}
+
+
+def zwaveEvent(physicalgraph.zwave.commands.multichannelv3.MultiChannelCmdEncap cmd) {
+    log.debug "MultiChannelCmdEncap ${cmd}"
+    def encapsulatedCommand = cmd.encapsulatedCommand([0x32: 3, 0x25: 1, 0x20: 1])
+    log.info "Encapsulated Command is ${encapsulatedCommand}"
+    if (encapsulatedCommand) {
+        zwaveEvent(encapsulatedCommand, cmd.sourceEndPoint as Integer)
+    }
+}
+
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
     // This will capture any commands not handled by other instances of zwaveEvent
     // and is recommended for development so you can see every command the device sends
-    log.debug "Unhandled Event: ${cmd}"
+    log.error "Unhandled Event from catchall: ${cmd}"
 }
