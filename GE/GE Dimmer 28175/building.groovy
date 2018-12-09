@@ -91,9 +91,8 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd, value=null) {
     log.debug "BasicSet ${cmd} with a child of ${value}"
     def result = createEvent(name: "switch", value: cmd.value ? "on" : "off", type: "digital")
     def cmds = []
-    cmds << encap(zwave.switchBinaryV1.switchBinaryGet(), 1)
-    cmds << encap(zwave.switchBinaryV1.switchBinaryGet(), 2)
-    log.trace "displaying commands for basicset ${cmds}"
+    cmds << encap(zwave.switchMultilevelV2.switchMultilevelGet(), 1)
+    cmds << encap(zwave.switchMultilevelV2.switchMultilevelGet(), 2)
     return [result, response(commands(cmds))] // returns the result of response()
 }
 
@@ -103,11 +102,9 @@ def zwaveEvent(physicalgraph.zwave.commands.switchmultilevelv3.SwitchMultilevelR
         def event
         def childDevice = childDevices.find {
             it.deviceNetworkId == "$device.deviceNetworkId-ep$ep"
-            log.info "Child device ID: ${it.deviceNetworkId}"
         }
         if (childDevice) {
             childDevice.sendEvent(name: "switch", value: cmd.value ? "on" : "off")
-            log.info "Child device event created for ${childDevice}"
         }
         if (cmd.value) {
             event = [createEvent([name: "switch", value: "on"])]
@@ -125,11 +122,10 @@ def zwaveEvent(physicalgraph.zwave.commands.switchmultilevelv3.SwitchMultilevelR
         }
         return event
     } else {
-        log.info "hit else block in MultilevelReport block"
         def result = createEvent(name: "switch", value: cmd.value ? "on" : "off", type: "digital")
         def cmds = []
-        cmds << encap(zwave.switchBinaryV1.switchBinaryGet(), 1)
-        cmds << encap(zwave.switchBinaryV1.switchBinaryGet(), 2)
+        cmds << encap(zwave.switchMultilevelV2.switchMultilevelGet(), 1)
+        cmds << encap(zwave.switchMultilevelV2.switchMultilevelGet(), 2)
         return [result, response(commands(cmds))] // returns the result of response()
     }
 }
@@ -138,7 +134,6 @@ def zwaveEvent(physicalgraph.zwave.commands.switchmultilevelv3.SwitchMultilevelR
 def zwaveEvent(physicalgraph.zwave.commands.multichannelv3.MultiChannelCmdEncap cmd) {
     log.debug "MultiChannelCmdEncap ${cmd}"
     def encapsulatedCommand = cmd.encapsulatedCommand([0x32: 3, 0x25: 1, 0x20: 1])
-    log.info "Encapsulated Command is ${encapsulatedCommand}"
     if (encapsulatedCommand) {
         zwaveEvent(encapsulatedCommand, cmd.sourceEndPoint as Integer)
     }
@@ -175,14 +170,53 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
     // This will capture any commands not handled by other instances of zwaveEvent
     // and is recommended for development so you can see every command the device sends
-    log.error "Unhandled Event from catchall: ${cmd}"
+    log.error "Unhandled Event: ${cmd}"
+}
+
+def on() {
+    log.debug "on()"
+    commands([
+            zwave.switchAllV1.switchAllOn(),
+            encap(zwave.switchMultilevelV2.switchMultilevelGet(), 1),
+            encap(zwave.switchMultilevelV2.switchMultilevelGet(), 2)
+    ])
+}
+
+def off() {
+    log.debug "off()"
+    commands([
+            zwave.switchAllV1.switchAllOff(),
+            encap(zwave.switchMultilevelV2.switchMultilevelGet(), 1),
+            encap(zwave.switchMultilevelV2.switchMultilevelGet(), 2)
+    ])
+}
+
+def poll() {
+    log.debug "poll()"
+    commands([
+            encap(zwave.switchMultilevelV2.switchMultilevelGet(), 1),
+            encap(zwave.switchMultilevelV2.switchMultilevelGet(), 2),
+    ])
+}
+
+def refresh() {
+    log.debug "refresh()"
+    commands([
+            encap(zwave.switchMultilevelV2.switchMultilevelGet() , 1),
+            encap(zwave.switchMultilevelV2.switchMultilevelGet() , 2),
+    ])
+}
+
+def ping() {
+    log.debug "ping()"
+    refresh()
 }
 
 void childOn(String dni) {
     log.debug "childOn($dni)"
     def cmds = []
     cmds << new physicalgraph.device.HubAction(command(encap(zwave.basicV1.basicSet(value: 0xFF), channelNumber(dni))))
-    cmds << new physicalgraph.device.HubAction(command(encap(zwave.switchBinaryV1.switchBinaryGet(), channelNumber(dni))))
+    cmds << new physicalgraph.device.HubAction(command(encap(zwave.switchMultilevelV2.switchMultilevelGet(), channelNumber(dni))))
     sendHubCommand(cmds, 1000)
 }
 
@@ -190,7 +224,7 @@ void childOff(String dni) {
     log.debug "childOff($dni)"
     def cmds = []
     cmds << new physicalgraph.device.HubAction(command(encap(zwave.basicV1.basicSet(value: 0x00), channelNumber(dni))))
-    cmds << new physicalgraph.device.HubAction(command(encap(zwave.switchBinaryV1.switchBinaryGet(), channelNumber(dni))))
+    cmds << new physicalgraph.device.HubAction(command(encap(zwave.switchMultilevelV2.switchMultilevelGet(), channelNumber(dni))))
     sendHubCommand(cmds, 1000)
 
 }
@@ -198,7 +232,7 @@ void childOff(String dni) {
 void childRefresh(String dni) {
     log.debug "childRefresh($dni)"
     def cmds = []
-    cmds << new physicalgraph.device.HubAction(command(encap(zwave.switchBinaryV1.switchBinaryGet(), channelNumber(dni))))
+    cmds << new physicalgraph.device.HubAction(command(encap(zwave.switchMultilevelV2.switchMultilevelGet(), channelNumber(dni))))
     sendHubCommand(cmds, 1000)
 }
 
@@ -216,6 +250,12 @@ private command(physicalgraph.zwave.Command cmd) {
     } else {
         cmd.format()
     }
+}
+
+private commands(commands, delay = 1000) {
+    delayBetween(commands.collect {
+        command(it)
+    }, delay)
 }
 
 private channelNumber(String dni) {
