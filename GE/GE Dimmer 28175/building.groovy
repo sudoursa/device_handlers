@@ -108,7 +108,6 @@ def zwaveEvent(physicalgraph.zwave.commands.switchmultilevelv3.SwitchMultilevelR
         }
         if (cmd.value) {
             event = [createEvent([name: "switch", value: "on"])]
-            log.trace "cmd.value is ${cmd.value}"
         } else {
             def allOff = true
             childDevices.each {
@@ -190,6 +189,21 @@ def off() {
             encap(zwave.switchMultilevelV2.switchMultilevelGet(), 1),
             encap(zwave.switchMultilevelV2.switchMultilevelGet(), 2)
     ], 3000)
+}
+
+def setLevel(value) {
+    log.debug "setLevel >> value: $value"
+    def valueaux = value as Integer
+    def level = Math.max(Math.min(valueaux, 99), 0)
+    log.debug "both channel setLevel >> value: $value"
+    if (level > 0) {
+        sendEvent(name: "switch", value: "on")
+    } else {
+        sendEvent(name: "switch", value: "off")
+    }
+    sendEvent(name: "level", value: level, unit: "%")
+    delayBetween([zwave.switchMultilevelV1.switchMultilevelSet(value: level).format(), zwave.switchMultilevelV1.switchMultilevelGet().format()], 5000)
+
 }
 
 def poll() {
